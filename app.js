@@ -189,6 +189,38 @@ app.get("/api/courses", async (req, res, next) => {
 });
 
 /**
+ * GET /api/courses/stats
+ * Returns summary statistics for all courses.
+ */
+app.get("/api/courses/stats", async (req, res, next) => {
+  try {
+    const courses = await readCourses();
+
+    const byStatus = {
+      "Not Started": 0,
+      "In Progress": 0,
+      Completed: 0,
+    };
+
+    for (const course of courses) {
+      if (Object.prototype.hasOwnProperty.call(byStatus, course.status)) {
+        byStatus[course.status] += 1;
+      }
+    }
+
+    return res.status(200).json({
+      message: "Course statistics fetched successfully.",
+      data: {
+        total_courses: courses.length,
+        by_status: byStatus,
+      },
+    });
+  } catch (error) {
+    return next(error);
+  }
+});
+
+/**
  * GET /api/courses/:id
  * Returns one course by id.
  */
