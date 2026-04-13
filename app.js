@@ -1,8 +1,12 @@
 const express = require("express");
+const cors = require("cors");
 const fs = require("fs/promises");
 const path = require("path");
 
 const app = express();
+
+// Allow requests from any origin (e.g. Live Server on port 5500).
+app.use(cors());
 const PORT = 5000;
 
 // JSON file used as a simple data store (no database needed).

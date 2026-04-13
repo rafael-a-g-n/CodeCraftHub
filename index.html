@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CodeCraftHub | Learning Management</title>
+    <style>
+        :root {
+            --primary: #8B5CF6;
+            --accent: #F59E0B;
+            --danger: #EF4444;
+            --bg: #f9fafb;
+            --text: #1f2937;
+        }
+        body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 2rem; }
+        .card { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        form { display: grid; gap: 10px; }
+        input, textarea, select { padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        button { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; color: white; font-weight: bold; }
+        .btn-primary { background: var(--primary); }
+        .btn-danger { background: var(--danger); }
+        .btn-edit { background: var(--accent); }
+        .btn-secondary { background: #6b7280; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; }
+        .loading { text-align: center; padding: 20px; font-style: italic; }
+        .error { color: var(--danger); padding: 10px; background: #fee2e2; border-radius: 4px; margin-bottom: 10px; display: none; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header><h1>CodeCraftHub: Your Learning Management Platform</h1></header>
+        <div id="error-msg" class="error"></div>
+        
+        <div class="card">
+            <h3>Add New Course</h3>
+            <form id="course-form">
+                <input type="text" id="name" placeholder="Course Name" required>
+                <textarea id="description" placeholder="Description" required></textarea>
+                <input type="date" id="target_date" required>
+                <select id="status">
+                    <option value="Not Started">Not Started</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                </select>
+                <button type="submit" class="btn-primary" id="submit-btn">Save Course</button>
+                <button type="button" class="btn-secondary" id="cancel-btn" onclick="cancelEdit()" style="display:none;">Cancel Edit</button>
+            </form>
+        </div>
+
+        <div id="loading" class="loading">Loading courses...</div>
+        <table id="course-table">
+            <thead><tr><th>Name</th><th>Status</th><th>Target Date</th><th>Actions</th></tr></thead>
+            <tbody id="course-list"></tbody>
+        </table>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:5000/api/courses';
+        const form = document.getElementById('course-form');
+        const list = document.getElementById('course-list');
+        const loader = document.getElementById('loading');
+        const errorDiv = document.getElementById('error-msg');
+        let editingId = null;
+
+        async function fetchCourses() {
+            loader.style.display = 'block';
+            try {
+                const res = await fetch(API_URL);
+                if (!res.ok) throw new Error('Failed to fetch');
+                const data = await res.json();
+                render(data.data);
+            } catch (e) { showError(e.message); }
+            finally { loader.style.display = 'none'; }
+        }
+
+        function render(courses) {
+            list.innerHTML = courses.map(c => `
+                <tr>
+                    <td>${c.name}</td>
+                    <td>${c.status}</td>
+                    <td>${c.target_date}</td>
+                    <td>
+                        <button class="btn-edit" onclick="editCourse('${c.id}')">Edit</button>
+                        <button class="btn-danger" onclick="deleteCourse('${c.id}')">Delete</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        form.onsubmit = async (e) => {
+            e.preventDefault();
+            const payload = {
+                name: document.getElementById('name').value,
+                description: document.getElementById('description').value,
+                target_date: document.getElementById('target_date').value,
+                status: document.getElementById('status').value
+            };
+            try {
+                const url = editingId ? `${API_URL}/${editingId}` : API_URL;
+                const method = editingId ? 'PUT' : 'POST';
+                const res = await fetch(url, {
+                    method,
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(payload)
+                });
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.message || 'Failed to save');
+                }
+                cancelEdit();
+                fetchCourses();
+            } catch (e) { showError(e.message); }
+        };
+
+        async function deleteCourse(id) {
+            if(!confirm('Delete this course?')) return;
+            try {
+                await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                fetchCourses();
+            } catch (e) { showError('Failed to delete'); }
+        }
+
+        async function editCourse(id) {
+            try {
+                const res = await fetch(`${API_URL}/${id}`);
+                if (!res.ok) throw new Error('Failed to fetch course');
+                const data = await res.json();
+                const c = data.data;
+                document.getElementById('name').value = c.name;
+                document.getElementById('description').value = c.description;
+                document.getElementById('target_date').value = c.target_date;
+                document.getElementById('status').value = c.status;
+                editingId = id;
+                document.getElementById('submit-btn').textContent = 'Update Course';
+                document.getElementById('cancel-btn').style.display = 'block';
+                document.querySelector('.card h3').textContent = 'Edit Course';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch (e) { showError(e.message); }
+        }
+
+        function cancelEdit() {
+            editingId = null;
+            form.reset();
+            document.getElementById('submit-btn').textContent = 'Save Course';
+            document.getElementById('cancel-btn').style.display = 'none';
+            document.querySelector('.card h3').textContent = 'Add New Course';
+        }
+
+        function showError(msg) {
+            errorDiv.textContent = msg;
+            errorDiv.style.display = 'block';
+            setTimeout(() => errorDiv.style.display = 'none', 3000);
+        }
+
+        fetchCourses();
+    </script>
+</body>
+</html>
