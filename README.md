@@ -10,6 +10,7 @@ Course data is stored in a local JSON file (`courses.json`) that is created auto
 - Simple Express server running on port `5000`
 - File-based storage using `courses.json` (no database required)
 - Full CRUD support for courses
+- Course statistics endpoint for progress overview
 - Input validation and clear error responses
 - Automatic course ID generation (starting from `1`)
 - Automatic `created_at` timestamp for new records
@@ -99,7 +100,25 @@ Example success response (`200`):
 }
 ```
 
-### 3. Get Course By ID
+### 3. Get Course Statistics
+**GET** `/api/courses/stats`
+
+Example success response (`200`):
+```json
+{
+  "message": "Course statistics fetched successfully.",
+  "data": {
+    "total_courses": 3,
+    "by_status": {
+      "Not Started": 1,
+      "In Progress": 1,
+      "Completed": 1
+    }
+  }
+}
+```
+
+### 4. Get Course By ID
 **GET** `/api/courses/:id`
 
 Example:
@@ -115,7 +134,7 @@ If not found, response is `404`:
 }
 ```
 
-### 4. Update Course
+### 5. Update Course
 **PUT** `/api/courses/:id`
 
 Example request body:
@@ -130,7 +149,7 @@ Example request body:
 
 Success response (`200`) returns updated course.
 
-### 5. Delete Course
+### 6. Delete Course
 **DELETE** `/api/courses/:id`
 
 Example:
